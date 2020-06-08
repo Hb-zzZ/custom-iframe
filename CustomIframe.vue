@@ -7,9 +7,17 @@ export default {
       type: Function,
       default: function() {}
     },
+    // 自定义样式
     styles: {
       type: String,
       default: ''
+    },
+    // 自定义css link
+    links: {
+      type: Array,
+      default() {
+        return []
+      }
     }
   },
   data() {
@@ -21,6 +29,11 @@ export default {
     styles: {
       handler() {
         this.loadStyles()
+      }
+    },
+    links: {
+      handler() {
+        this.loadLinks()
       }
     }
   },
@@ -34,15 +47,41 @@ export default {
     this.iApp.children = Object.freeze(this.$slots.default)
   },
   methods: {
+    loadLinks() {
+      const { links } = this
+      const doc = document
+      const head = this.$el.contentDocument.head
+      const frag = document.createDocumentFragment()
+
+      const loadLinks = links.map((item) => {
+        const link = doc.createElement('link')
+
+        for (const key in item) {
+          link.setAttribute(key, item[key])
+        }
+        return link
+      })
+
+      loadLinks.forEach((item) => frag.appendChild(item))
+
+      head.appendChild(frag)
+    },
     loadStyles() {
+      const doc = document
       const head = this.$el.contentDocument.head
 
-      let stylesString = this.styles
+      const style = doc.createElement('style')
 
-      if (!/(<style.*?<\/style>)/.test(stylesString)) {
-        stylesString = `<style> ${stylesString} </style>`
+      if (style.styleSheet) {
+        // IE
+        style.styleSheet.cssText = this.styles
+      } else {
+        const cssText = doc.createTextNode(this.styles)
+
+        style.appendChild(cssText)
       }
-      head.innerHTML = stylesString
+
+      head.appendChild(style)
     },
     renderChildren() {
       const children = this.$slots.default
@@ -61,8 +100,12 @@ export default {
 
       iApp.$mount(el) // mount into iframe
 
-      this.loadStyles()
       this.iApp = iApp
+      this.afterRender()
+    },
+    afterRender() {
+      this.loadLinks()
+      this.loadStyles()
       this.onMounted()
     }
   }
